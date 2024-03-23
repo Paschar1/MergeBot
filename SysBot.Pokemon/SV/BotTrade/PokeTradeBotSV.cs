@@ -317,6 +317,15 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
                     await RecoverToOverworld(token).ConfigureAwait(false);
                 }
                 await ExitTradeToPortal(false, token).ConfigureAwait(false);
+
+                if (poke.TotalBatchTrades > 1)
+                {
+                    // If it's part of a batch trade, remove the current trade from the queue
+                    var routineType = GetRoutineType(poke.Type);
+                    Hub.Queues.Info.Remove(new TradeEntry<PK9>(poke, poke.Trainer.ID, routineType, poke.Trainer.TrainerName, poke.UniqueTradeID));
+                    Log($"No trainer found for trade {completedTrades + 1} of {poke.TotalBatchTrades}. Removing from the queue.");
+                }
+
                 return PokeTradeResult.NoTrainerFound;
             }
 
@@ -418,6 +427,16 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
                         await ExitTradeToPortal(false, token).ConfigureAwait(false);
                         return update;
+                    }
+
+                    // Swap the Pokémon details (AutoOT)
+                    if (Hub.Config.Legality.UseTradePartnerInfo)
+                    {
+                        var swapResult = await SetBoxPkmWithSwappedIDDetailsSV(toSend, tradePartnerFullInfo, sav, token).ConfigureAwait(false);
+                        if (!swapResult)
+                        {
+                            Log("Failed to swap Pokémon details. Proceeding with the original Pokémon.");
+                        }
                     }
 
                     if (itemReq == SpecialTradeType.WonderCard)
